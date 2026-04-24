@@ -39,5 +39,3 @@ enum Gender {
   female
   other
 }
-
-
