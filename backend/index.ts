@@ -70,4 +70,46 @@ app.post("/api/signup" , async (req ,res) => {
     res.status(201).json({token , userId:user.id});
 
 })
+app.post("/api/signin" , async (req,res) => {
+    const parsed = signinSchema.safeParse(req.body);
+    if(!parsed.success) { res.status(401).json({error : "parsed error message"}); return;}
 
+    const { username , password } = parsed.data;
+    
+    const user = await prisma.user.findFirst({where : { username }});
+    if(!user) {res.status(400).json({error : "Invalid credentials."}); return; }
+ })
+
+app.get("/api/videos" , async(req,res) => {
+    const videos = await prisma.uploads.findMany({
+        include: {user : {select: {id:true, channelName: true, profilePicture: true}}},
+        orderBy: {createdAt: "desc"}
+    });
+    res.json(videos);
+})
+
+app.get("/spi/videos/:id" , async (req,res)=> {
+    const video = await prisma.uploads.findUnique({
+        where: {id:req.params.id},
+        include: { user: {select: {id:true, channelName:true, profilePicture:true , subscriberCount: true}}},
+    });
+    if(!video){
+        res.status(404).json({error: "Video not found"}); return;
+    }
+    res.json(video);
+});
+
+app.post("/api/videos" , async(req,res) => {
+    const userId = getUserId(req);
+    if(!userId) {
+        res.status(401).json({ error: "Unauthorized"}); return;
+    }
+    const parsed = uploadSchema.safeParse(req.body);
+    if(!parsed.success) { 
+        res.status(400).json({ error : parsed.error.message});return;
+    }
+    const video = await prisma.uploads.create({
+        data: { ...parsed.data,userId},
+    });
+    res.status(201).json(video);
+});
